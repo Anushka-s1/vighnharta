@@ -11,9 +11,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -71,7 +74,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainScreen(viewModel: SoundSchedulerViewModel) {
-    var currentTab by remember { mutableStateOf(0) } // 0: Dashboard, 1: Smart AI, 2: Analytics, 3: Settings
+    var currentTab by remember { mutableStateOf(0) } // 0: Dashboard, 1: Calendar, 2: Analytics, 3: Settings
     val activeNotification by viewModel.activeNotification.collectAsStateWithLifecycle()
     val activeDetails by viewModel.activeNotificationDetails.collectAsStateWithLifecycle()
     val activeType by viewModel.activeNotificationType.collectAsStateWithLifecycle()
@@ -93,9 +96,9 @@ fun MainScreen(viewModel: SoundSchedulerViewModel) {
                 NavigationBarItem(
                     selected = currentTab == 1,
                     onClick = { currentTab = 1 },
-                    icon = { Icon(Icons.Default.AutoAwesome, contentDescription = "Smart AI") },
-                    label = { Text("Smart AI") },
-                    modifier = Modifier.testTag("tab_smart_ai")
+                    icon = { Icon(Icons.Default.CalendarMonth, contentDescription = "Calendar") },
+                    label = { Text("Calendar") },
+                    modifier = Modifier.testTag("tab_calendar")
                 )
                 NavigationBarItem(
                     selected = currentTab == 2,
@@ -121,7 +124,7 @@ fun MainScreen(viewModel: SoundSchedulerViewModel) {
         ) {
             when (currentTab) {
                 0 -> DashboardTab(viewModel)
-                1 -> SmartCalendarTab(viewModel)
+                1 -> CalendarTab(viewModel)
                 2 -> AnalyticsTab(viewModel)
                 3 -> ProfileSettingsTab(viewModel)
             }
@@ -163,7 +166,7 @@ fun MainScreen(viewModel: SoundSchedulerViewModel) {
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = if (isVibrate) Icons.Default.VolumeMute else Icons.Default.VolumeUp,
+                                    imageVector = if (isVibrate) Icons.AutoMirrored.Filled.VolumeMute else Icons.AutoMirrored.Filled.VolumeUp,
                                     contentDescription = null,
                                     tint = if (isVibrate) Color.LightGray else MaterialTheme.colorScheme.onPrimary
                                 )
@@ -253,14 +256,19 @@ fun SoundwaveAnimatedBanner(
         modifier = Modifier
             .fillMaxWidth()
             .height(160.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.linearGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.surfaceVariant,
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
                         MaterialTheme.colorScheme.surface
                     )
                 )
+            )
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(24.dp)
             )
     ) {
         // Ambient Moving Waves
@@ -433,8 +441,10 @@ fun DashboardTab(viewModel: SoundSchedulerViewModel) {
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                shape = RoundedCornerShape(16.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -454,7 +464,8 @@ fun DashboardTab(viewModel: SoundSchedulerViewModel) {
                                 Text(
                                     text = if (masterPause) "Schedules Suspended" else "Schedules Running",
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp
+                                    fontSize = 15.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = if (masterPause) "Master Pause is ON" else "Auto-switching is active",
@@ -472,7 +483,7 @@ fun DashboardTab(viewModel: SoundSchedulerViewModel) {
 
                     if (manualOverride != "NONE") {
                         Spacer(modifier = Modifier.height(12.dp))
-                        Divider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f))
                         Spacer(modifier = Modifier.height(12.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -484,13 +495,14 @@ fun DashboardTab(viewModel: SoundSchedulerViewModel) {
                                     Icons.Default.Lock,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = "Manual Mode: $manualOverride",
                                     fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                             Button(
@@ -520,16 +532,33 @@ fun DashboardTab(viewModel: SoundSchedulerViewModel) {
                     colors = CardDefaults.cardColors(
                         containerColor = if (manualOverride == "VIBRATE") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, if (manualOverride == "VIBRATE") MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (manualOverride == "VIBRATE") 4.dp else 1.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.VolumeMute, contentDescription = "Force Vibrate")
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("Force Vibrate", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Text("Mutes sound immediately", fontSize = 10.sp, textAlign = TextAlign.Center)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeMute, 
+                            contentDescription = "Force Vibrate",
+                            tint = if (manualOverride == "VIBRATE") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Force Vibrate", 
+                            fontWeight = FontWeight.Bold, 
+                            fontSize = 13.sp,
+                            color = if (manualOverride == "VIBRATE") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Mutes sound immediately", 
+                            fontSize = 10.sp, 
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
@@ -540,16 +569,33 @@ fun DashboardTab(viewModel: SoundSchedulerViewModel) {
                     colors = CardDefaults.cardColors(
                         containerColor = if (manualOverride == "SOUND") MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    border = BorderStroke(1.dp, if (manualOverride == "SOUND") MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (manualOverride == "SOUND") 4.dp else 1.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(12.dp),
+                        modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(Icons.Default.VolumeUp, contentDescription = "Force Sound")
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("Force Sound", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        Text("Enables ringer immediately", fontSize = 10.sp, textAlign = TextAlign.Center)
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp, 
+                            contentDescription = "Force Sound",
+                            tint = if (manualOverride == "SOUND") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Force Sound", 
+                            fontWeight = FontWeight.Bold, 
+                            fontSize = 13.sp,
+                            color = if (manualOverride == "SOUND") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Enables ringer immediately", 
+                            fontSize = 10.sp, 
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -557,52 +603,72 @@ fun DashboardTab(viewModel: SoundSchedulerViewModel) {
 
         // Section Title: Quick Presets
         item {
-            Text(
-                text = "Context-Aware Profiles (Quick Activation)",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        // Profiles row
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val presets = listOf("🏢 Work Profile", "🏋️ Gym Profile", "😴 Sleep Profile", "📚 Student Mode", "🎬 Movie Mode")
-                presets.forEach { profile ->
-                    Button(
-                        onClick = { viewModel.addProfilePreset(profile) },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
-                    ) {
-                        Text(profile, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Quick Activation Profiles",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 0.1.sp
+                )
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val presets = listOf("🏢 Work Profile", "🏋️ Gym Profile", "😴 Sleep Profile", "📚 Student Mode", "🎬 Movie Mode")
+                    presets.forEach { profile ->
+                        val emoji = profile.take(2)
+                        val title = profile.drop(2)
+                        Card(
+                            modifier = Modifier
+                                .clickable { viewModel.addProfilePreset(profile) }
+                                .clip(RoundedCornerShape(12.dp)),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(emoji, fontSize = 14.sp)
+                                Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Section Title: Simulated Location GPS Geofencing
+        // Section Title: Proximity Location Trigger
         item {
             Text(
-                text = "📍 Simulated GPS Geofencing",
+                text = "📍 Proximity Location Trigger",
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
+                fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.primary
             )
         }
 
         item {
-            val currentLocationName by viewModel.currentLocationName.collectAsStateWithLifecycle()
+            val locationTriggerName by viewModel.locationTriggerName.collectAsStateWithLifecycle()
+            val locationDistanceMeters by viewModel.locationDistanceMeters.collectAsStateWithLifecycle()
+            val isLocationTriggerEnabled by viewModel.isLocationTriggerEnabled.collectAsStateWithLifecycle()
+
+            var isEditingName by remember { mutableStateOf(false) }
+            var tempName by remember { mutableStateOf(locationTriggerName) }
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(16.dp)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(24.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
@@ -610,59 +676,136 @@ fun DashboardTab(viewModel: SoundSchedulerViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "Current Location Status",
+                                text = "Proximity Settings",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "Simulating GPS coordinate stream",
-                                fontSize = 11.sp,
+                                text = "Automatically silent within 100m radius",
+                                fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        Switch(
+                            checked = isLocationTriggerEnabled,
+                            onCheckedChange = { viewModel.setLocationTriggerEnabled(it) },
+                            modifier = Modifier.testTag("location_trigger_switch")
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Location Name input or display
+                    if (isEditingName) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = currentLocationName,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            OutlinedTextField(
+                                value = tempName,
+                                onValueChange = { tempName = it },
+                                label = { Text("Enter Target Location") },
+                                modifier = Modifier.weight(1f),
+                                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                                singleLine = true
                             )
+                            Button(
+                                onClick = {
+                                    if (tempName.isNotBlank()) {
+                                        viewModel.setLocationTriggerName(tempName)
+                                        isEditingName = false
+                                    }
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                            ) {
+                                Text("Set", fontSize = 11.sp)
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.LocationOn, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Target Zone: $locationTriggerName",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            TextButton(
+                                onClick = { 
+                                    tempName = locationTriggerName
+                                    isEditingName = true 
+                                },
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text("Edit Name", fontSize = 12.sp)
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
+
+                    // Proximity simulation slider
                     Text(
-                        text = "Tap to move and trigger automatic geofenced silence zones:",
-                        fontSize = 11.sp,
+                        text = "Simulate current distance: ${locationDistanceMeters.toInt()} meters",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Slider(
+                        value = locationDistanceMeters,
+                        onValueChange = { viewModel.updateLocationDistance(it) },
+                        valueRange = 0f..300f,
+                        modifier = Modifier.fillMaxWidth().testTag("location_distance_slider")
+                    )
+
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // Proximity Status Indicator
+                    val isInside = locationDistanceMeters <= 100f
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (!isLocationTriggerEnabled) {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.04f)
+                                } else if (isInside) {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                } else {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.04f)
+                                }
+                            )
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        val locs = listOf("🏠 Home", "🏢 Office", "🏋️ Gym", "🌳 Unknown")
-                        locs.forEach { loc ->
-                            val isSelected = currentLocationName == loc
-                            Button(
-                                onClick = { viewModel.simulateLocation(loc) },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
-                            ) {
-                                Text(loc, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            if (!isLocationTriggerEnabled) {
+                                Icon(Icons.Default.LocationOff, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Text("Trigger Disabled. Location tracking off.", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            } else if (isInside) {
+                                Icon(Icons.AutoMirrored.Filled.VolumeMute, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                Text("🌿 INSIDE (${locationDistanceMeters.toInt()}m <= 100m): Automatically Muted!", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            } else {
+                                Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                Text("🌱 OUTSIDE (${locationDistanceMeters.toInt()}m > 100m): Sound Enabled", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             }
                         }
                     }
@@ -773,7 +916,7 @@ fun ScheduleCard(schedule: Schedule, viewModel: SoundSchedulerViewModel) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            Icons.Default.VolumeMute,
+                            Icons.AutoMirrored.Filled.VolumeMute,
                             contentDescription = "Vibrate Time",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
@@ -784,13 +927,13 @@ fun ScheduleCard(schedule: Schedule, viewModel: SoundSchedulerViewModel) {
                             fontSize = 14.sp
                         )
                         Icon(
-                            Icons.Default.ArrowForward,
+                            Icons.AutoMirrored.Filled.ArrowForward,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(12.dp)
                         )
                         Icon(
-                            Icons.Default.VolumeUp,
+                            Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "Sound Time",
                             tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(16.dp)
@@ -1118,14 +1261,18 @@ fun CreateEditScheduleDialog(
 }
 
 @Composable
-fun SmartCalendarTab(viewModel: SoundSchedulerViewModel) {
-    val isAnalyzing by viewModel.isAnalyzingCalendar.collectAsStateWithLifecycle()
-    var calendarInputText by remember { mutableStateOf("") }
+fun CalendarTab(viewModel: SoundSchedulerViewModel) {
+    val schedules by viewModel.schedules.collectAsStateWithLifecycle()
+    var selectedDay by remember { mutableStateOf("MON") }
 
-    val presetAgendas = listOf(
-        "Standup meeting from 10:00 AM to 11:00 AM, Mon-Fri. Gym session at 6:00 PM to 7:00 PM on Monday, Wednesday, Friday.",
-        "Calculus class on Tuesday and Thursday from 2:00 PM to 3:30 PM. Group project work on Thursday night from 8:00 PM to 10:00 PM.",
-        "Dentist visit on Monday 3:00 PM to 4:00 PM. Weekend yoga meditation Saturday 9:00 AM to 10:30 AM."
+    val daysOfWeekMap = mapOf(
+        "MON" to "Monday",
+        "TUE" to "Tuesday",
+        "WED" to "Wednesday",
+        "THU" to "Thursday",
+        "FRI" to "Friday",
+        "SAT" to "Saturday",
+        "SUN" to "Sunday"
     )
 
     LazyColumn(
@@ -1136,103 +1283,191 @@ fun SmartCalendarTab(viewModel: SoundSchedulerViewModel) {
     ) {
         item {
             Text(
-                text = "Smart Calendar AI Sync",
+                text = "Alarm Schedule Calendar",
                 fontWeight = FontWeight.Bold,
                 fontSize = 22.sp,
                 color = MaterialTheme.colorScheme.primary
             )
-            Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Input meeting details or copy-paste calendar text. Vighnharta AI will automatically build custom silence schedules.",
+                text = "Tap a day to view its specific sound automations.",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
+        // Horizontal Days of the Week Selection Bar
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    OutlinedTextField(
-                        value = calendarInputText,
-                        onValueChange = { calendarInputText = it },
-                        label = { Text("Calendar Text / Agenda Notes") },
-                        placeholder = { Text("Paste here e.g., Scrum meeting 10am-11am Monday through Friday...") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(140.dp)
-                            .testTag("calendar_agenda_input")
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "Weekly Overview",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        daysOfWeekMap.forEach { (abbr, fullName) ->
+                            val activeSchedulesForDay = schedules.filter { 
+                                it.isEnabled && it.days.split(",").contains(abbr) 
+                            }
+                            val hasAlarm = activeSchedulesForDay.isNotEmpty()
+                            val isSelected = selectedDay == abbr
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    if (isAnalyzing) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text("Analyzing with Gemini AI...", fontSize = 13.sp)
-                        }
-                    } else {
-                        Button(
-                            onClick = {
-                                viewModel.importCalendarAgenda(calendarInputText)
-                                calendarInputText = ""
-                            },
-                            enabled = calendarInputText.isNotBlank(),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("import_calendar_button")
-                        ) {
-                            Icon(Icons.Default.AutoAwesome, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("AI Extract & Schedule")
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primaryContainer 
+                                        else Color.Transparent
+                                    )
+                                    .clickable { selectedDay = abbr }
+                                    .padding(vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = abbr,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer 
+                                            else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                
+                                // Cute Alarm Indicator Dot or Heart or Icon
+                                if (hasAlarm) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primary)
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.size(8.dp))
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
+        // Selected Day Header
         item {
             Text(
-                text = "Quick Mock Templates",
+                text = "Active Profiles on ${daysOfWeekMap[selectedDay]}",
                 fontWeight = FontWeight.Bold,
-                fontSize = 15.sp,
+                fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.primary
             )
         }
 
-        items(presetAgendas) { preset ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { calendarInputText = preset },
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+        // Schedules active for this specific day
+        val daySchedules = schedules.filter { 
+            it.isEnabled && it.days.split(",").contains(selectedDay) 
+        }
+
+        if (daySchedules.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(
-                        Icons.Default.CalendarToday,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = preset,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f)
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("🍡 All Quiet!", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            text = "No silent schedules are active on this day. Your phone will stay on standard sound mode.",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        } else {
+            items(daySchedules) { schedule ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.VolumeMute,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = schedule.name,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = "Alert message: \"${schedule.customMessage}\"",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Time frame layout
+                        Column(horizontalAlignment = Alignment.End) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = schedule.vibrateTime,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.ArrowDownward, contentDescription = null, modifier = Modifier.size(10.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Sound at ${schedule.soundTime}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1340,9 +1575,25 @@ fun AnalyticsTab(viewModel: SoundSchedulerViewModel) {
                             .height(150.dp)
                     ) {
                         val days = listOf("M", "T", "W", "T", "F", "S", "S")
-                        val hoursMuted = listOf(4f, 6f, 5f, 7f, 3f, 1f, 2f) // Mock stats
+                        val daysOfWeekKeys = listOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN")
+                        val hoursMuted = daysOfWeekKeys.map { dayKey ->
+                            val scheds = schedules.filter { it.isEnabled && it.days.split(",").contains(dayKey) }
+                            if (scheds.isEmpty()) {
+                                0.2f
+                            } else {
+                                scheds.sumOf { sched ->
+                                    val partsVibrate = sched.vibrateTime.split(":")
+                                    val partsSound = sched.soundTime.split(":")
+                                    val vMin = (partsVibrate.getOrNull(0)?.toIntOrNull() ?: 0) * 60 + (partsVibrate.getOrNull(1)?.toIntOrNull() ?: 0)
+                                    val sMin = (partsSound.getOrNull(0)?.toIntOrNull() ?: 0) * 60 + (partsSound.getOrNull(1)?.toIntOrNull() ?: 0)
+                                    val diff = sMin - vMin
+                                    val finalDiff = if (diff > 0) diff else (1440 - vMin) + sMin
+                                    finalDiff.toDouble() / 60.0
+                                }.toFloat()
+                            }
+                        }
                         val stepX = size.width / (days.size + 1)
-                        val maxVal = 10f
+                        val maxVal = maxOf(hoursMuted.maxOrNull() ?: 10f, 10f)
 
                         // Draw Grid lines
                         for (i in 1..4) {
@@ -1599,7 +1850,7 @@ fun ProfileSettingsTab(viewModel: SoundSchedulerViewModel) {
                         }
                     }
 
-                    Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
 
                     vipContacts.forEach { contact ->
                         Row(

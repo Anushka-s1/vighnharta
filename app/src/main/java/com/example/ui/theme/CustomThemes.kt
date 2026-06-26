@@ -16,6 +16,39 @@ enum class SoundSchedulerTheme(
     val onBackground: Color,
     val onSurface: Color
 ) {
+    CALMING_SAGE(
+        displayName = "Calming Sage",
+        iconEmoji = "🌿",
+        isDark = false,
+        primary = Color(0xFF4A7C59),
+        background = Color(0xFFF0F5F1),
+        surface = Color(0xFFFFFFFF),
+        onPrimary = Color.White,
+        onBackground = Color(0xFF1E3524),
+        onSurface = Color(0xFF1E3524)
+    ),
+    CUTE_PASTEL(
+        displayName = "Cute Pastel",
+        iconEmoji = "🍡",
+        isDark = false,
+        primary = Color(0xFFFF8B94),
+        background = Color(0xFFFFF6F6),
+        surface = Color(0xFFFFECEF),
+        onPrimary = Color.White,
+        onBackground = Color(0xFF5E3A3C),
+        onSurface = Color(0xFF5E3A3C)
+    ),
+    CUTE_LAVENDER(
+        displayName = "Cute Lavender",
+        iconEmoji = "🔮",
+        isDark = false,
+        primary = Color(0xFFB39DDB),
+        background = Color(0xFFF3E5F5),
+        surface = Color(0xFFEDE7F6),
+        onPrimary = Color(0xFF311B92),
+        onBackground = Color(0xFF311B92),
+        onSurface = Color(0xFF311B92)
+    ),
     OCEAN_BLUE(
         displayName = "Ocean Blue",
         iconEmoji = "🌊",

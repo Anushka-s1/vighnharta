@@ -39,8 +39,18 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
     private val _masterPause = MutableStateFlow(false)
     val masterPause = _masterPause.asStateFlow()
 
-    private val _appTheme = MutableStateFlow(SoundSchedulerTheme.OCEAN_BLUE)
+    private val _appTheme = MutableStateFlow(SoundSchedulerTheme.CALMING_SAGE)
     val appTheme = _appTheme.asStateFlow()
+
+    // Proximity/Location Settings
+    private val _locationTriggerName = MutableStateFlow("College Library")
+    val locationTriggerName = _locationTriggerName.asStateFlow()
+
+    private val _locationDistanceMeters = MutableStateFlow(150f)
+    val locationDistanceMeters = _locationDistanceMeters.asStateFlow()
+
+    private val _isLocationTriggerEnabled = MutableStateFlow(true)
+    val isLocationTriggerEnabled = _isLocationTriggerEnabled.asStateFlow()
 
     private val _vipContacts = MutableStateFlow<List<String>>(emptyList())
     val vipContacts = _vipContacts.asStateFlow()
@@ -132,8 +142,8 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
         // Load Settings on Start
         viewModelScope.launch {
             _masterPause.value = repository.getSetting("master_pause")?.toBoolean() ?: false
-            val themeStr = repository.getSetting("app_theme") ?: SoundSchedulerTheme.OCEAN_BLUE.name
-            _appTheme.value = SoundSchedulerTheme.values().find { it.name == themeStr } ?: SoundSchedulerTheme.OCEAN_BLUE
+            val themeStr = repository.getSetting("app_theme") ?: SoundSchedulerTheme.CALMING_SAGE.name
+            _appTheme.value = SoundSchedulerTheme.values().find { it.name == themeStr } ?: SoundSchedulerTheme.CALMING_SAGE
             
             val vipStr = repository.getSetting("vip_contacts") ?: "Mom (Emergency),Boss (Work)"
             _vipContacts.value = vipStr.split(",").filter { it.isNotEmpty() }
@@ -142,6 +152,10 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
             _userName.value = user
             val email = repository.getSetting("user_email") ?: "jane.doe@example.com"
             _userEmail.value = email
+
+            _locationTriggerName.value = repository.getSetting("loc_trigger_name") ?: "College Library"
+            _locationDistanceMeters.value = repository.getSetting("loc_distance")?.toFloatOrNull() ?: 150f
+            _isLocationTriggerEnabled.value = repository.getSetting("loc_trigger_enabled")?.toBoolean() ?: true
 
             // Start clock tracker to scan schedule triggers periodically
             startClockTracker()
@@ -166,7 +180,7 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
 
     // Haptic and sound feedback helper
     fun triggerFeedback(isVibrate: Boolean) {
-        val ctx = getApplication<Application>().applicationContext
+        val ctx = getApplication<Application>()
         viewModelScope.launch(Dispatchers.Main) {
             try {
                 // Play Ringtone/Alert Sound
@@ -215,39 +229,100 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
         }
     }
 
+    // Helper to check if current time is within a range
+    private fun timeToMinutes(time: String): Int {
+        val parts = time.split(":")
+        if (parts.size != 2) return 0
+        val hours = parts[0].toIntOrNull() ?: 0
+        val minutes = parts[1].toIntOrNull() ?: 0
+        return hours * 60 + minutes
+    }
+
+    private fun isTimeInRange(currentTimeStr: String, startTimeStr: String, endTimeStr: String): Boolean {
+        val current = timeToMinutes(currentTimeStr)
+        val start = timeToMinutes(startTimeStr)
+        val end = timeToMinutes(endTimeStr)
+        
+        return if (start <= end) {
+            current in start until end
+        } else {
+            // Midnight crossing (e.g. 22:00 to 07:00)
+            current >= start || current < end
+        }
+    }
+
+    // Trigger immediate evaluation with a slight delay to allow database/flow changes to settle
+    private fun triggerCheck() {
+        viewModelScope.launch {
+            delay(200)
+            checkSchedules()
+        }
+    }
+
     // Core Scheduler Scan Loop (Runs every 10 seconds in background)
     private fun startClockTracker() {
         viewModelScope.launch(Dispatchers.Default) {
             while (true) {
                 delay(10000) // check every 10 seconds
-                if (!_masterPause.value) {
-                    checkSchedules()
-                }
+                checkSchedules()
             }
         }
     }
 
     private suspend fun checkSchedules() {
         val list = schedules.value.filter { it.isEnabled }
-        if (list.isEmpty()) return
-
+        
         // Current time info
         val now = Calendar.getInstance()
         val currentHourMin = SimpleDateFormat("HH:mm", Locale.getDefault()).format(now.time)
         val dayOfWeekStr = SimpleDateFormat("EEE", Locale.US).format(now.time).uppercase() // "MON", "TUE" etc
 
-        for (schedule in list) {
-            val scheduledDays = schedule.days.split(",")
-            if (!scheduledDays.contains(dayOfWeekStr)) continue
+        var shouldBeSilent = false
+        var activeSchedule: Schedule? = null
 
-            // Check Vibrate trigger
-            if (currentHourMin == schedule.vibrateTime && _manualOverride.value != "VIBRATE") {
-                activateMode(vibrate = true, scheduleName = schedule.name, detail = "🔇 Vibrate mode activated. Context: ${schedule.customMessage}")
+        // Only evaluate schedule ranges if master pause is inactive
+        if (!_masterPause.value) {
+            for (schedule in list) {
+                val scheduledDays = schedule.days.split(",")
+                if (!scheduledDays.contains(dayOfWeekStr)) continue
+
+                if (isTimeInRange(currentHourMin, schedule.vibrateTime, schedule.soundTime)) {
+                    shouldBeSilent = true
+                    activeSchedule = schedule
+                    break
+                }
             }
 
-            // Check Sound trigger
-            if (currentHourMin == schedule.soundTime && _manualOverride.value != "SOUND") {
-                activateMode(vibrate = false, scheduleName = schedule.name, detail = "🔔 Sound mode is back ON. You have 0 missed calls from VIPs.")
+            // Proximity setting: within 100 meters of our custom location
+            if (_isLocationTriggerEnabled.value && _locationDistanceMeters.value <= 100f) {
+                shouldBeSilent = true
+            }
+        }
+
+        // Determine the target mode based on overrides or schedules
+        val overrideMode = _manualOverride.value ?: "NONE"
+        val targetMode = when (overrideMode) {
+            "VIBRATE" -> "VIBRATE"
+            "SOUND" -> "SOUND"
+            else -> {
+                if (shouldBeSilent) "VIBRATE" else "SOUND"
+            }
+        }
+
+        val currentMode = _activeNotificationType.value
+        if (currentMode != targetMode) {
+            if (targetMode == "VIBRATE") {
+                activateMode(
+                    vibrate = true,
+                    scheduleName = activeSchedule?.name ?: "Scheduled Quiet",
+                    detail = "🔇 Vibrate mode automatically activated. Context: ${activeSchedule?.customMessage ?: "Scheduled Quiet Hour"}"
+                )
+            } else {
+                activateMode(
+                    vibrate = false,
+                    scheduleName = "Schedule Restoration",
+                    detail = "🔔 Sound mode automatically restored. You have 0 missed calls from VIPs."
+                )
             }
         }
     }
@@ -306,6 +381,7 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
             _activeNotification.value = if (targetVibrate) "🔇 Manual Vibrate ON" else "🔔 Manual Sound ON"
             _activeNotificationDetails.value = "Schedule triggers are temporarily paused. Tap Undo or Clear Override to resume."
             _activeNotificationType.value = if (targetVibrate) "VIBRATE" else "SOUND"
+            triggerCheck()
         }
     }
 
@@ -314,6 +390,7 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
         dismissNotification()
         viewModelScope.launch {
             logEvent("Manual Override", "OVERRIDE", "Cleared manual override. Resumed schedules.")
+            triggerCheck()
         }
     }
 
@@ -324,6 +401,7 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
             _masterPause.value = newVal
             repository.saveSetting("master_pause", newVal.toString())
             logEvent("Master Toggle", "PAUSED", if (newVal) "All schedules suspended." else "All schedules resumed.")
+            triggerCheck()
         }
     }
 
@@ -333,6 +411,49 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
             _appTheme.value = theme
             repository.saveSetting("app_theme", theme.name)
             logEvent("App Preferences", "THEME_CHANGED", "Switched application style to ${theme.displayName}.")
+        }
+    }
+
+    fun setLocationTriggerName(name: String) {
+        viewModelScope.launch {
+            _locationTriggerName.value = name
+            repository.saveSetting("loc_trigger_name", name)
+            triggerCheck()
+        }
+    }
+
+    fun setLocationTriggerEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            _isLocationTriggerEnabled.value = enabled
+            repository.saveSetting("loc_trigger_enabled", enabled.toString())
+            triggerCheck()
+        }
+    }
+
+    fun updateLocationDistance(distance: Float) {
+        viewModelScope.launch {
+            val previousDistance = _locationDistanceMeters.value
+            _locationDistanceMeters.value = distance
+            repository.saveSetting("loc_distance", distance.toString())
+
+            if (!_isLocationTriggerEnabled.value || _masterPause.value) return@launch
+
+            val isInsideNow = distance <= 100f
+            val wasInsideBefore = previousDistance <= 100f
+
+            if (isInsideNow && !wasInsideBefore) {
+                activateMode(
+                    vibrate = true,
+                    scheduleName = "Location Alert",
+                    detail = "📍 Entered 100m of ${_locationTriggerName.value}. Muted phone!"
+                )
+            } else if (!isInsideNow && wasInsideBefore) {
+                activateMode(
+                    vibrate = false,
+                    scheduleName = "Location Exit",
+                    detail = "📍 Left ${_locationTriggerName.value} (>100m). Sound restored!"
+                )
+            }
         }
     }
 
@@ -353,6 +474,7 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
                 logEvent("Schedule Manager", "UPDATED", "Updated schedule '${schedule.name}' (${schedule.vibrateTime} - ${schedule.soundTime}).")
             }
             onCompleted()
+            triggerCheck()
         }
     }
 
@@ -397,6 +519,7 @@ class SoundSchedulerViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             repository.deleteSchedule(schedule)
             logEvent("Schedule Manager", "DELETED", "Removed schedule '${schedule.name}'.")
+            triggerCheck()
         }
     }
 

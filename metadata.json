@@ -1,0 +1,6 @@
+{
+  "name": "Vighnharta",
+  "description": "Vighnharta is a smart context-aware Sound Scheduler that automatically removes sound distractions and scheduling obstacles, switching modes based on customizable schedules, location-based geofences, and smart AI calendar parsing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
